@@ -1,32 +1,81 @@
 #!/bin/bash
 
-# Author: Kyle Terrien
-# See <https://www.linuxquestions.org/questions/programming-9/bash-shell-scripting-foreach-file-in-folder-305549/>
+# Author:   Kyle Terrien (KlipperKyle)
+# Date:     2014-01-14
 
-extension=".md"
+function fatal {
+    echo "$0: $@" >&2
+    exit 1
+}
 
-if [ -e index.html ]; then
-    rm index.html
+function show_help {
+    echo "$0: Usage:" >&2
+    echo "$0" >&2
+    echo "" >&2
+    echo "Converts all markdown files into HTML files" >&2
+    exit 2
+}
+
+function convert_file {
+    # Expects 2 filenames: markdown source, HTML output
+    cat > "$2" << END_HTML
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+    "http://www.w3.org/TR/html4/loose.dtd"><html>
+<head>
+<title>$2</title>
+</head>
+<body>
+$(markdown "$1")
+</body>
+</html>
+END_HTML
+}
+
+# Did the user request help?
+if [ x"$@" = x"--help" -o x"$@" = x"-h" ] ; then
+    show_help
 fi
 
+# Check for markdown
+type markdown &> /dev/null || fatal "Cannot find markdown"
+
+extension="md"              # Extension of Markdown sources
+sources="*.$extension"      # Filter for the Markdown sources
+
+indexfiles=""
+
+# Check for updated markdown source and convert each
+for file in $sources ; do
+    newfile="${file%.$extension}.html"
+    if [ ! -e "$newfile" -o "$file" -nt "$newfile" ]; then
+        # Only convert the file if the HTML D.N.E or if the source is newer
+        # than the HTML output.
+        echo "Converting $file to $newfile"
+        convert_file "$file" "$newfile"
+    fi
+    # Add link to index.html
+    indexfiles="${indexfiles}<li><a href=\"${newfile}\">${newfile}</a></li>"$'\n'
+done
+
+# Write the index page
 cat > index.html << END_HTML
-<title>`pwd`</title>
-<h1>Index of `pwd`</h1>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+    "http://www.w3.org/TR/html4/loose.dtd"><html>
+<html>
+<head>
+<title>$(pwd)</title>
+</head>
+<body>
+<h1>Index of $(pwd)</h1>
 
 <hr>
 <ul>
+$indexfiles
+</ul>
+</body>
+</html>
 END_HTML
 
-for file in ./*$extension
-do
-    newfile="${file%$extension}.html"
-    if [ -e "$newfile" ]; then
-        rm "$newfile"
-    fi
-    echo "Converting $file to $newfile"
-    markdown "$file" > "$newfile"
-    echo "<li><a href=\"${newfile#"./"}\">${newfile#"./"}</a></li>" >> index.html
-done
-
-echo "</ul>" >> index.html
 echo "Created index.html"
+
+# vim: et ts=4 sw=4 :
