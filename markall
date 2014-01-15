@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Author: Kyle Terrien
+# See <https://www.linuxquestions.org/questions/programming-9/bash-shell-scripting-foreach-file-in-folder-305549/>
+
+extension=".md"
+
+if [ -e index.html ]; then
+    rm index.html
+fi
+
+cat > index.html << END_HTML
+<title>`pwd`</title>
+<h1>Index of `pwd`</h1>
+
+<hr>
+<ul>
+END_HTML
+
+for file in ./*$extension
+do
+    newfile="${file%$extension}.html"
+    if [ -e "$newfile" ]; then
+        rm "$newfile"
+    fi
+    echo "Converting $file to $newfile"
+    markdown "$file" > "$newfile"
+    echo "<li><a href=\"${newfile#"./"}\">${newfile#"./"}</a></li>" >> index.html
+done
+
+echo "</ul>" >> index.html
+echo "Created index.html"
